@@ -1,0 +1,358 @@
+#!/bin/bash
+
+# ***********************************************************************
+# ScriptName:	testscript
+# Language:		bash
+# Date:			9-26-20
+# Last Mod:		9-26-20
+#
+# Description:
+#	Used to test OTP Client-Server programs in C
+#	Tests:
+#		1. Keygen. 
+#			a) Test outputs to stdout as specified by argument
+#			b) Test output of keylength 10 to a file
+#			c) Test output of keylenghth 77,777 to a file
+#
+#		2. ENCRYPTION.
+#			a) Test encryption with too long of key is OK
+#			b) Test encryption with too short of key FAILS
+#			c) Test encryption with DECRYPTION port FAILS
+#
+#		3. DECRYPTION.
+#			a) Test decryption with ENCRYPTION port FAILS
+#			b) Test decryption with too short of key FAILS
+#			c) Test decryption with too long of key is OK
+#
+#		4. Test 5 Encryptions consecutively
+#
+#		5. Test 5 Decryptions consecutively
+#
+# ***********************************************************************
+
+#use the standard version of echo
+echo=/bin/echo
+
+# Stops the servers that handle encryption and decryption
+function stopDaemons(){
+	dashDivider
+	comment "Stopping Daemons"
+	killall -q -u $USER otp_enc_d otp_dec_d
+	dashDivider
+}
+
+function error(){
+	${echo} -e $1 >&2
+	stopDaemons
+	exit 1
+}
+
+function findOneFile(){
+	if [ ! -f $1 ]
+	then
+		error "Missing $1"
+	else
+		${echo} -e "Found: $1"
+	fi
+}
+
+function findAllFiles(){
+	findOneFile "keygen.c"
+	findOneFile "otp_enc.c"
+	findOneFile "otp_enc_d.c"
+	findOneFile "otp_dec.c"
+	findOneFile "otp_dec_d.c"
+	findOneFile "helpers.h"
+	findOneFile "fileHelpers.c"
+	findOneFile "sendAndRecv.c"
+	findOneFile "authenticate.c"
+	findOneFile "ptxts.zip"
+}
+
+# MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+# PRINTING & FORMATTING FUNCTIONS 
+# WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+
+# Enters a newline
+function nl(){
+	${echo}
+}
+
+function equalDivider(){
+	${echo} -e '===================================================================='
+}
+
+function dashDivider(){
+	${echo} -e '--------------------------------------------------------------------'
+}
+function comment(){
+	${echo} -e "# $1"
+}
+
+# Formatting for beginning of a test category
+function testing(){
+	equalDivider
+	${echo} -e "TEST: $1"
+	equalDivider
+}
+
+# prints the size of a file in bytes
+function getFileBytes(){
+	wc -c $1
+}
+
+function printAllFileBytes(){
+	if [ -f $1 ]
+	then
+		getFileBytes $1
+	fi
+	if [ -f $2 ]
+	then
+		getFileBytes $2
+	fi
+	if [ -f $3 ]
+	then
+		getFileBytes $3
+	fi
+	if [ -f $4 ]
+	then
+		getFileBytes $4
+	fi
+	if [ -f $5 ]
+	then
+		getFileBytes $5
+	fi
+}
+
+# Calls cmp to compare orignal plaintext to decrypted version
+function compareIfFilesCorrupted(){
+	if [ -f $1 ]
+	then
+		if [ -f $2 ]
+		then
+			local result=$(cmp $1 $2)
+			if [ "$result" != "" ] 
+				then
+					${echo} -e "Decrypted file varies from original!"
+					${echo} -e $result
+			fi
+		fi
+	fi
+}
+
+empty=" "
+
+comment 'BEGIN: testscript'
+comment '#Setting . in PATH env variable (required)'
+
+# Place . in your PATH env variable
+export PATH=$PATH:.
+
+#Clean up any previous runs
+comment '#Initializing - Cleaning up'
+stopDaemons
+rm -f ctxt*
+rm -f shortKey 
+rm -f longKey 
+
+
+comment 'Looking for needed files..'
+findAllFiles
+comment '#All files found'
+
+# Create ports for encryption and decryption.
+comment 'Generating ports for Encryption & Decryption'
+encport=$(shuf -i 55000-56000 -n 1)
+decport=$(shuf -i 55000-56000 -n 1)
+nl
+
+# Start Encryption Daemon
+printf "Starting Encryption Daemon on port:%s" $encport
+nl
+otp_enc_d ${encport} &
+
+# Start Decryption Daemon
+printf "Starting Decryption Daemon on port:%s" $decport
+nl
+otp_dec_d ${decport} &
+
+# MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+testing "keygen.c"
+comment "Generate key to stdout" 
+comment 'key-length: 10'
+nl
+keygen 10
+nl
+sleep 1
+dashDivider
+# -----------------------------------------------------------------------
+nl
+comment "Generate shortKey to file" 
+comment 'shortKey length 10'
+keygen 10 > shortKey 
+nl
+findOneFile "shortKey"
+cat shortKey
+nl
+comment 'EXECUTE: wc -c shortKey should give 11'
+wc -c shortKey 
+nl
+sleep 1
+dashDivider
+# -----------------------------------------------------------------------
+nl
+comment "Generate longKey to file" 
+comment 'longKey length 69,999'
+keygen 69999 > longKey 
+nl
+findOneFile "longKey"
+nl
+comment 'EXECUTE: wc -c longKey should give 70,000'
+wc -c longKey 
+nl
+# -----------------------------------------------------------------------
+dashDivider
+comment 'Plaintext 1-5 byte sizes:'
+printAllFileBytes plaintext1 plaintext2 plaintext3 plaintext4 plaintext5 
+nl
+# MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+testing "ENCRYPTION"
+comment 'plaintext1 contents:'
+cat plaintext1
+nl
+# -----------------------------------------------------------------------
+comment 'Use-Case: Encrypt with TOO SHORT of key'
+comment '        : Expect error message.'
+comment 'otp_enc plaintext1 shortKey $encport > ctxt'
+nl
+otp_enc plaintext1 shortKey $encport > ctxt
+nl
+if [ -e ctxt ] 
+then
+	rm -f ctxt
+fi
+dashDivider
+# -----------------------------------------------------------------------
+comment 'Use-Case: Encrypt with DECRYPTION port'
+comment '        : Expect error message. Cannot reach host.'
+comment 'otp_enc plaintext1 longKey $decport > ctxt'
+nl
+otp_enc plaintext1 longKey $decport > ctxt
+if [ -e ctxt ] 
+then
+	rm -f ctxt
+fi
+nl
+dashDivider
+# -----------------------------------------------------------------------
+comment 'Use-Case: Encrypt with longKey on correct ENCRYPTION port'
+comment '        : Expect success!'
+comment 'otp_enc plaintext1 longKey $encport > ctxt'
+otp_enc plaintext1 longKey $encport > ctxt
+nl
+findOneFile ctxt
+comment 'ctxt should look encrypted:'
+nl
+cat ctxt
+nl
+# MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+testing "DECRYPTION"
+comment 'Use-Case: Decrypt with TOO SHORT of key'
+comment '        : Expect Fail with error message.'
+comment 'otp_dec ctxt shortKey $decport > ptxt'
+nl
+otp_dec ctxt shortKey "$decport" > ptxt
+nl
+if [ -e ptxt ] 
+then
+	rm -f ptxt
+fi
+
+dashDivider
+# -----------------------------------------------------------------------
+comment 'Use-Case: Decrypt with ENCRYPTION port'
+comment '        : Expect error message. Cannot reach host.'
+comment ' otp_dec ctxt longKey $encport > ptxt'
+nl
+otp_dec ctxt longKey "$encport" > ptxt
+nl
+if [ -e ptxt ] 
+then
+	rm -f ptxt
+fi
+
+dashDivider
+# -----------------------------------------------------------------------
+comment 'Use-Case: Decrypt with longKey on correct DECRYPTION port'
+comment '        : Expect success!'
+comment 'otp_dec ctxt longKey $decport > ptxt'
+otp_dec ctxt longKey "$decport" > ptxt
+nl
+comment 'Compare with original plaintext1..'
+cat plaintext1
+nl
+comment 'ptxt contents:'
+cat ptxt
+compareIfFilesCorrupted plaintext1 ptxt
+if [ -e "ptxt" ]
+then
+	rm -f "ptxt"
+fi
+nl
+# MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+testing "5 Consecutive ENCRYPTIONS"
+comment 'using longKey for all encryptions'
+otp_enc plaintext1 longKey "$encport" > ctxt1 &
+otp_enc plaintext2 longKey "$encport" > ctxt2 &
+otp_enc plaintext3 longKey "$encport" > ctxt3 &
+otp_enc plaintext4 longKey "$encport" > ctxt4 &
+comment 'plaintext5 contains bad characters'
+comment 'Expected error msg..'
+otp_enc plaintext5 longKey "$encport" > ctxt5 &
+comment 'Waiting 5 seconds before decrypting..'
+nl
+sleep 5 
+
+# MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+testing "5 Consecutive DECRYPTIONS"
+comment 'using longKey for all decryptions'
+otp_dec ctxt1 longKey "$decport" > ptxt1 &
+otp_dec ctxt2 longKey "$decport" > ptxt2 &
+otp_dec ctxt3 longKey "$decport" > ptxt3 &
+otp_dec ctxt4 longKey "$decport" > ptxt4 &
+otp_dec ctxt5 longKey "$decport" > ptxt5 &
+
+comment 'Waiting 5 more seconds..'
+sleep 5 
+
+# ------------------------------------------------------------------------
+comment 'calling cmp on originals vs. encrypted then decrypted versions..'
+compareIfFilesCorrupted plaintext1 ptxt1
+compareIfFilesCorrupted plaintext2 ptxt2
+compareIfFilesCorrupted plaintext3 ptxt3
+compareIfFilesCorrupted plaintext4 ptxt4
+compareIfFilesCorrupted plaintext5 ptxt5
+# ------------------------------------------------------------------------
+nl
+dashDivider
+comment 'Decrypted ciphertext file sizes (bytes)'
+comment 'Visually inspect. See how ptxt5 is different'
+printAllFileBytes ptxt1 ptxt2 ptxt3 ptxt4 ptxt5
+nl
+
+# Cleanup
+stopDaemons
+rm -f ptxt1 ptxt2 ptxt3 ptxt4 ptxt5
+rm -f ctxt*
+rm -f shortKey 
+rm -f longKey 
+comment "END testscript"
+
+exit 0
+
+
+
+
+
+
+

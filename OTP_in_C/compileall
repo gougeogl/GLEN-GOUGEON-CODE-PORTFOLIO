@@ -1,0 +1,82 @@
+#!/bin/bash
+#MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+# FileName: compileall
+# Author:	Glen Gougeon
+# Date:		7-30-20
+# Last MOD:	9-27-20	
+# Description:
+#	script to setup OTP Client-Server Project
+#	for testing. Utilyzes 'testscript'
+#MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+
+# SET UP ALL PROGRAMS
+
+# compiler
+CC="gcc"
+
+# compilation flags
+CFLAGS="-Wall -pedantic -std=c99"
+
+h1="headers.h"
+f1="keygen.c"
+f2="otp_enc.c"
+f3="otp_enc_d.c"
+f4="otp_dec.c"
+f5="otp_dec_d.c"
+f5="ptxts.zip"
+s1="testscript"
+
+function validateFile(){
+	local input
+	if [ ! -f $input ]
+	then
+		echo -e "MISSING: $input Exiting"
+		exit 1
+	fi
+}
+
+validateFile $h1
+validateFile $f1
+validateFile $f2
+validateFile $f3
+validateFile $f4
+validateFile $f5
+validateFile $s1
+
+# testscript requires . in $PATH
+export PATH=$PATH:.
+
+# keygen
+$CC $CFLAGS -o keygen keygen.c
+
+# encryption client
+$CC $CFLAGS -o otp_enc -g helpers.h otp_enc.c
+
+# encrytion server
+$CC $CFLAGS -o otp_enc_d -g helpers.h otp_enc_d.c 
+
+# decryption client
+$CC $CFLAGS -o otp_dec -g helpers.h otp_dec.c
+
+# decryption server
+$CC $CFLAGS -o otp_dec_d -g helpers.h otp_dec_d.c 
+
+# unpack test files for p4gradingscript
+unzip -nq ptxts.zip
+
+# enable test script execution
+chmod +x testscript
+
+clean(){
+	rm -f keygen mytestresults 
+	rm -f otp_enc otp_enc_d
+	rm -f otp_dec otp_dec_d
+	rm -f *ciphertext*
+	rm -f *plaintext*
+	chmod -x testscript
+	exit 0
+}
+
+$1 "${@:2}"
+
+exit 0

@@ -1,0 +1,192 @@
+#!/bin/bash
+
+       echo '******************************************************************'
+       echo '#   SET-UP SCRIPT'
+    echo -e "#   Testing Script PID: $$"
+       echo '#   Note: smallsh will report a different PID when evaluating $$'
+       echo '#   compiling smallsh..'
+# compile first
+gcc -o smallsh smallsh.c
+       echo '#   starting smallsh'
+       echo '*****************************************************************'
+
+echo
+./smallsh <<"___EOF___"
+echo ================
+echo Running Tests..|
+echo ====================================
+echo TEST external commands
+echo ====================================
+echo ls
+echo
+ls
+echo
+echo ------------------------------------
+echo ps
+echo
+ps
+echo
+echo ------------------------------------
+echo pwd
+pwd
+echo 
+echo -------------------------------------
+echo TEST comment #
+echo EXPECT nothing. You have to test
+echo this manually.
+# This is a comment
+echo
+echo -------------------------------------
+echo TEST variable expansion $$
+echo EXPECT pid 
+echo $$
+echo
+echo -------------------------------------
+echo TEST create new file
+echo ls out junk
+ls > junk
+echo
+echo cat junk
+echo 
+cat junk
+echo
+echo wc in junk
+wc < junk
+echo
+echo -------------------------------------
+echo TEST multiple io redirects
+echo
+echo wc in junk out junk2
+wc < junk > junk2
+echo cat junk2
+cat junk2
+rm -f junk junk2
+echo
+echo -------------------------------------
+echo TEST using non-existing-file
+echo -AND-
+echo TEST built-in STATUS
+echo EXPECTING err msg
+echo EXPECTING exit status 1
+echo
+echo wc in badfile
+wc < badfile
+status
+echo
+echo -------------------------------------
+echo TEST built-in STATUS command success
+echo EXPECTING exit status 0
+echo status
+status
+echo
+echo -------------------------------------
+echo TEST call a non-existing file
+echo EXPECTING err msg
+echo
+badfile
+echo
+echo -------------------------------------
+echo TEST create new directory
+echo junkDir$$
+mkdir junkDir$$
+echo
+echo ls
+echo 
+ls
+echo
+echo -------------------------------------
+echo TEST navigate into junkDir$$
+echo pwd BEFORE
+pwd
+echo
+echo cd junkDir$$
+cd junkDir$$
+echo
+echo pwd AFTER
+pwd
+echo
+echo -------------------------------------
+echo TEST cd ..
+cd ..
+echo pwd
+pwd
+echo
+echo -------------------------------------
+echo TEST delete junkDir$$
+echo rm -rf junkDir$$
+rm -rf junkDir$$
+echo
+echo ls
+ls
+echo
+echo -------------------------------------
+echo TEST built-in cd
+echo EXPECT go into home directory
+echo cd
+cd
+echo pwd
+pwd
+echo
+echo =====================================
+echo BACK-GROUND-PROCESS
+echo =====================================
+echo TEST start a bg process.. get pid
+echo
+echo sleep 300 BACKGROUND
+sleep 300 &
+echo
+echo -------------------------------------
+echo TEST kill a background process..
+echo Cntl-C SIGTERM
+echo
+echo EXPECT to get pid AND get signal
+echo
+echo IGNORE possible not permitted errs
+echo .. those are other users on the system
+echo 
+pkill --signal SIGTERM sleep
+echo
+echo -------------------------------------
+echo TEST get pid of COMPLETED bg process
+echo
+echo sleep 1 background..
+sleep 1 &
+echo 
+echo =====================================
+echo FORE-GROUND-ONLY MODE 
+echo Cntl-Z SIGTSTP
+echo =====================================
+echo TEST enter foregound-only mode 
+echo EXPECT msg
+echo -AND-
+echo EXPECT waiting 3 seconds
+echo
+kill -SIGTSTP $$
+echo
+echo First.. check date 
+date
+echo 
+echo then sleep 3 background
+sleep 3 &
+echo 
+echo Now.. check date again
+date
+echo
+echo Result should be 3 seconds different
+echo -------------------------------------
+echo TEST exit foregournd-only mode 
+echo EXPECT msg
+echo
+kill -SIGTSTP $$
+echo -------------------------------------
+echo TEST exit shell !!
+echo MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+exit
+___EOF___
+
+echo
+
+rm -f junk*
+rm -rf junkDir*
+rm -f smallsh
+
