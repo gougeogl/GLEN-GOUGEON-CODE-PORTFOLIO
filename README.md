@@ -6,18 +6,13 @@
 * Conferred: June 2020
 * gpa: 3.0
 ### Description:
-This portfolio includes a samples of code I developed as
-a Computer Science major at Oregon State University. 
-## Index:
-Program | Directory | Sub-Folder | Description
---------|-----------|------------|------------
-ftserver.c | FTP_in_C_and_Python3 | LOOK_HERE | server program for FTP system
-ftclient.py | FTP_in_C_and_Python3 | LOOK_HERE | client program for FTP system
-pickPort.c | FTP_in_C_and_Python3 | LOOK_HERE | generates 2 ports as files
-start.py | FTP_in_C_and_Python3 | LOOK_HERE | set-up script for FTP server 
-request.py | FTP_in_C_and_Python3 | LOOK_HERE | simplifies commands to ftclient.py
-clean.py | FTP_in_C_and_Python3 | LOOK_HERE | cleans up after testing FTP
-ANapinTime_Documentation.pdf | HISTORY_GAME | n/a | Exhaustive documentation of History Game
-SEE History Game Table | SRC_FILES | n/a | Source code for History Game
-SEE History Game Table | SRC_FILES | UNIX_COMPILED_VERSION | Executables for History Game compiled on OSU server
+This portfolio includes programs and sample code I developed as
+a Computer Science major at Oregon State University, and afterwards
+## Programs Folder Index:
+Program | Description | Folder | Sub-Folder 
+--------|-------------|--------|------------
+FTP | A File Transfer system in C & Python3 | FTP_in_C_and_Python3 | LOOK_HERE |
+A Nap in Time Game | A command line escape room game in C++ | HISTORY_GAME | UNIX_COMPILED_VERSION
+OTP | One-Time-Pad Client-Server system | OTP_in_C | none
+smallsh.c | A BASH like shell program in C | SHELL_in_C
  
